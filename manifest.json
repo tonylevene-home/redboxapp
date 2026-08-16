@@ -1,0 +1,17 @@
+{
+  "name": "The Red Box — PM Crisis Simulator",
+  "short_name": "Red Box",
+  "description": "A swipe-card political crisis simulator. Please the Cabinet, the Backbenches, the Press, and the Public — or fall to any one of them.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b1f3a",
+  "theme_color": "#0b1f3a",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

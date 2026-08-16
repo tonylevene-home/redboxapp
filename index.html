@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>THE RED BOX — Prime Ministerial Crisis Simulator</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b1f3a">
+<meta name="background-color" content="#0b1f3a">
+
+<!-- iOS home-screen app support -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Red Box">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+<!-- Android / general favicon -->
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0b1f3a;
+    --navy-deep:#071527;
+    --parchment:#ede6d6;
+    --gold:#c9a24b;
+    --crimson:#8b2635;
+    --cabinet:#4b3f72;
+    --backbench:#2e6e62;
+    --media:#8b2635;
+    --public:#a3821f;
+    --ink:#1c1710;
+    --paper:#f6f1e4;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at 50% -10%, #142c52 0%, var(--navy) 45%, var(--navy-deep) 100%);
+    font-family:'IBM Plex Sans', sans-serif;
+    color:var(--parchment);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    user-select:none;
+  }
+  #app{
+    width:100%;
+    max-width:480px;
+    height:100vh;
+    max-height:900px;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    padding:calc(14px + env(safe-area-inset-top)) 14px calc(env(safe-area-inset-bottom));
+  }
+
+  /* ---------- HEADER ---------- */
+  header{
+    text-align:center;
+    padding:6px 0 10px;
+    flex-shrink:0;
+  }
+  .crest{
+    font-size:11px;
+    letter-spacing:.35em;
+    color:var(--gold);
+    text-transform:uppercase;
+    font-family:'IBM Plex Mono', monospace;
+  }
+  h1{
+    font-family:'Playfair Display', serif;
+    font-weight:900;
+    font-size:26px;
+    margin:2px 0 0;
+    letter-spacing:.01em;
+  }
+  h1 span{color:var(--gold);}
+  .sub{
+    font-size:11px;
+    color:#9fb0c9;
+    margin-top:2px;
+    font-family:'IBM Plex Mono', monospace;
+  }
+
+  /* ---------- FACTION DIALS ---------- */
+  .dials{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:8px;
+    flex-shrink:0;
+    margin-bottom:12px;
+  }
+  .dial{
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(201,162,75,.25);
+    border-radius:8px;
+    padding:6px 6px 8px;
+    text-align:center;
+  }
+  .dial .label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:9px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    opacity:.75;
+    margin-bottom:5px;
+  }
+  .gauge{
+    height:5px;
+    border-radius:3px;
+    background:rgba(255,255,255,.12);
+    overflow:hidden;
+  }
+  .gauge > i{
+    display:block;
+    height:100%;
+    border-radius:3px;
+    transition:width .4s cubic-bezier(.4,0,.2,1), background .4s;
+  }
+  .dial[data-f="cabinet"] .label{color:#a89ee0;}
+  .dial[data-f="backbench"] .label{color:#7fd8c4;}
+  .dial[data-f="media"] .label{color:#e59aa4;}
+  .dial[data-f="public"] .label{color:#e8c96a;}
+
+  /* ---------- STAGE ---------- */
+  .stage{
+    position:relative;
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:0;
+  }
+
+  .hint{
+    position:absolute;
+    top:50%;
+    transform:translateY(-50%);
+    font-family:'Playfair Display', serif;
+    font-weight:700;
+    font-size:14px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    padding:6px 12px;
+    border-radius:4px;
+    opacity:0;
+    transition:opacity .15s;
+    pointer-events:none;
+    white-space:nowrap;
+    max-width:150px;
+    white-space:normal;
+    text-align:center;
+  }
+  .hint.left{left:6px; color:#e59aa4; border:1.5px solid #e59aa4;}
+  .hint.right{right:6px; color:#7fd8c4; border:1.5px solid #7fd8c4;}
+
+  .card{
+    position:absolute;
+    width:82%;
+    max-width:340px;
+    aspect-ratio:3/4.1;
+    background:var(--paper);
+    color:var(--ink);
+    border-radius:10px;
+    box-shadow:0 18px 40px rgba(0,0,0,.45), 0 2px 0 rgba(255,255,255,.5) inset;
+    padding:22px 20px 18px;
+    display:flex;
+    flex-direction:column;
+    cursor:grab;
+    touch-action:none;
+    will-change:transform;
+  }
+  .card::before{
+    content:'';
+    position:absolute;
+    top:14px; left:14px; right:14px;
+    height:1px;
+    background:repeating-linear-gradient(90deg, rgba(0,0,0,.15) 0 6px, transparent 6px 11px);
+  }
+  .card-eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--crimson);
+    margin-top:14px;
+    font-weight:600;
+  }
+  .card-text{
+    font-family:'Playfair Display', serif;
+    font-size:21px;
+    line-height:1.32;
+    font-weight:700;
+    margin-top:10px;
+    flex:1;
+  }
+  .card-choices{
+    display:flex;
+    gap:10px;
+    padding-top:14px;
+    margin-top:10px;
+    border-top:1px dashed rgba(0,0,0,.25);
+  }
+  .choice-pill{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    font-weight:600;
+    letter-spacing:.02em;
+    text-align:center;
+    padding:10px 8px;
+    border-radius:20px;
+    line-height:1.25;
+    transition:transform .15s, box-shadow .15s;
+  }
+  .choice-pill.l{
+    background:rgba(139,38,53,.09);
+    border:1.5px solid rgba(139,38,53,.55);
+    color:var(--crimson);
+  }
+  .choice-pill.r{
+    background:rgba(46,110,98,.09);
+    border:1.5px solid rgba(46,110,98,.55);
+    color:var(--backbench);
+  }
+  .choice-pill .arrow{font-size:13px; flex-shrink:0;}
+  .card.tilt-l .choice-pill.l{background:rgba(139,38,53,.22); box-shadow:0 0 0 2px rgba(139,38,53,.3) inset;}
+  .card.tilt-r .choice-pill.r{background:rgba(46,110,98,.22); box-shadow:0 0 0 2px rgba(46,110,98,.3) inset;}
+
+  /* ---------- HEADLINE TICKER ---------- */
+  .ticker-wrap{
+    flex-shrink:0;
+    margin:10px 0 14px;
+    border-top:1px solid rgba(201,162,75,.3);
+    padding-top:8px;
+    min-height:34px;
+  }
+  .ticker-title{
+    font-family:'Playfair Display', serif;
+    font-weight:900;
+    font-size:12px;
+    color:var(--gold);
+    letter-spacing:.08em;
+  }
+  .ticker-title small{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:400;
+    color:#9fb0c9;
+    letter-spacing:.02em;
+  }
+  .ticker-body{
+    font-size:12.5px;
+    color:#dfe6f0;
+    margin-top:3px;
+    min-height:16px;
+  }
+
+  /* ---------- OVERLAY (game over / election / intro) ---------- */
+  .overlay{
+    position:absolute; inset:0;
+    background:rgba(6,14,28,.94);
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+    z-index:30;
+  }
+  .overlay.hidden{display:none;}
+  .panel{
+    max-width:360px;
+    text-align:center;
+  }
+  .panel .crest{display:block; margin-bottom:10px;}
+  .panel h2{
+    font-family:'Playfair Display', serif;
+    font-size:28px;
+    margin:0 0 6px;
+  }
+  .panel p{
+    font-size:14px;
+    line-height:1.55;
+    color:#cdd8e8;
+  }
+  .stat-row{
+    display:flex;
+    justify-content:center;
+    gap:18px;
+    margin:16px 0;
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .stat-row div{font-size:22px; color:var(--gold); font-weight:600;}
+  .stat-row span{display:block; font-size:9px; letter-spacing:.08em; color:#9fb0c9; margin-top:2px;}
+  button.primary{
+    margin-top:10px;
+    background:var(--gold);
+    color:var(--navy-deep);
+    border:none;
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:600;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    font-size:13px;
+    padding:12px 28px;
+    border-radius:4px;
+    cursor:pointer;
+  }
+  button.primary:active{transform:scale(.97);}
+  .pm-name-input{
+    margin-top:14px;
+    width:100%;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(201,162,75,.4);
+    color:var(--parchment);
+    font-family:'IBM Plex Mono', monospace;
+    padding:10px;
+    border-radius:4px;
+    text-align:center;
+    font-size:13px;
+  }
+  .pm-name-input::placeholder{color:#7f8ea6;}
+
+  @media (max-height: 700px){
+    .card-text{font-size:18px;}
+    h1{font-size:22px;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="crest">✦ OFFICE OF THE PRIME MINISTER ✦</div>
+    <h1>THE RED <span>BOX</span></h1>
+    <div class="sub" id="termLine">TERM I · MONTH 0 OF 60</div>
+  </header>
+
+  <div class="dials">
+    <div class="dial" data-f="cabinet"><div class="label">Cabinet</div><div class="gauge"><i id="g-cabinet"></i></div></div>
+    <div class="dial" data-f="backbench"><div class="label">Backbench</div><div class="gauge"><i id="g-backbench"></i></div></div>
+    <div class="dial" data-f="media"><div class="label">Press</div><div class="gauge"><i id="g-media"></i></div></div>
+    <div class="dial" data-f="public"><div class="label">Public</div><div class="gauge"><i id="g-public"></i></div></div>
+  </div>
+
+  <div class="stage">
+    <div class="hint left" id="hintLeft"></div>
+    <div class="hint right" id="hintRight"></div>
+    <div class="card" id="card">
+      <div class="card-eyebrow" id="cardEyebrow">CRISIS BRIEFING</div>
+      <div class="card-text" id="cardText">Loading…</div>
+      <div class="card-choices">
+        <div class="choice-pill l"><span class="arrow">◀</span><span id="choiceLeft"></span></div>
+        <div class="choice-pill r"><span id="choiceRight"></span><span class="arrow">▶</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ticker-wrap">
+    <div class="ticker-title">THE DAILY RECKONING <small id="editionNum">· Edition 1</small></div>
+    <div class="ticker-body" id="ticker">The nation awaits your first move.</div>
+  </div>
+
+  <!-- Intro overlay -->
+  <div class="overlay" id="introOverlay">
+    <div class="panel">
+      <span class="crest">✦ 10 DOWNING STREET ✦</span>
+      <h2>THE RED BOX</h2>
+      <p>You are the incoming Prime Minister. Four forces decide your fate — please them all, or fall to any one of them at zero. Each swipe costs a month; survive a full five-year term to face the country at the ballot box. Goodwill erodes on its own even in a quiet month, and it never gets easier. There is no version of this that ends well forever.</p>
+      <input class="pm-name-input" id="pmNameInput" placeholder="Your name, Prime Minister" maxlength="24">
+      <br>
+      <button class="primary" id="startBtn">Enter No. 10</button>
+    </div>
+  </div>
+
+  <!-- Game over overlay -->
+  <div class="overlay hidden" id="endOverlay">
+    <div class="panel">
+      <span class="crest">✦ RESIGNATION HONOURS ✦</span>
+      <h2 id="endTitle">Vote of No Confidence</h2>
+      <p id="endText"></p>
+      <div class="stat-row">
+        <div><span id="endDays">0</span><span>Months in office</span></div>
+        <div><span id="endTerms">0</span><span>Terms served</span></div>
+      </div>
+      <button class="primary" id="restartBtn">A New Leader Emerges</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- DATA ----------
+  const FACTIONS = ["cabinet","backbench","media","public"];
+  const FACTION_COLOR = {
+    cabinet:"#8f7fd6", backbench:"#5fd6bd", media:"#e2707e", public:"#e8c25c"
+  };
+
+  // Original crisis deck. Each: text, l/r labels, effects {faction: delta}, headlines.
+  const DECK = [
+    {t:"The Chancellor wants to freeze public sector pay for a third year running.", l:"Hold the line", r:"Grant the rise",
+      e:{l:{cabinet:6,backbench:2,media:-3,public:-8}, r:{cabinet:-4,backbench:3,media:2,public:8}},
+      hl:{l:"PM STANDS FIRM AS UNIONS FUME", r:"TREASURY CAVES: 'WHERE'S THE MONEY COMING FROM?'"}},
+    {t:"A junior minister was photographed at a party while the country was in lockdown restrictions.", l:"Sack them", r:"Defend them",
+      e:{l:{cabinet:-5,backbench:2,media:5,public:4}, r:{cabinet:4,backbench:-3,media:-8,public:-6}},
+      hl:{l:"MINISTER GONE — PM 'RESTORES DISCIPLINE'", r:"PM ACCUSED OF ONE RULE FOR THEM"}},
+    {t:"Rail workers announce a fresh wave of strikes over the August bank holiday.", l:"Legislate minimum service", r:"Open pay talks",
+      e:{l:{cabinet:3,backbench:4,media:-2,public:-5}, r:{cabinet:-2,backbench:-4,media:3,public:5}},
+      hl:{l:"UNIONS: 'THIS IS UNION-BUSTING'", r:"COMMUTERS CAUTIOUSLY RELIEVED"}},
+    {t:"A leaked memo shows the Home Office quietly missed its asylum backlog targets again.", l:"Own it publicly", r:"Bury it in a Friday release",
+      e:{l:{cabinet:-3,backbench:-2,media:4,public:2}, r:{cabinet:2,backbench:2,media:-6,public:-3}},
+      hl:{l:"PM: 'WE GOT THIS WRONG, HERE'S THE PLAN'", r:"FRIDAY NIGHT DATA DROP FOOLS NO ONE"}},
+    {t:"The Queen of the Humber, your fiercest backbench rival, requests a private audience.", l:"Grant her a Cabinet post", r:"Freeze her out",
+      e:{l:{cabinet:-6,backbench:8,media:0,public:-1}, r:{cabinet:3,backbench:-9,media:1,public:1}},
+      hl:{l:"RIVAL PROMOTED — 'KEEP YOUR ENEMIES CLOSER'", r:"BACKBENCH FURY AS RIVAL SNUBBED"}},
+    {t:"Energy bills are set to rise 12% this winter. The Cabinet is split on a windfall tax.", l:"Tax the energy firms", r:"Let the market decide",
+      e:{l:{cabinet:-4,backbench:1,media:3,public:7}, r:{cabinet:5,backbench:-1,media:-3,public:-7}},
+      hl:{l:"ENERGY BOSSES THREATEN TO PULL INVESTMENT", r:"HOUSEHOLDS BRACE FOR BRUTAL WINTER"}},
+    {t:"Your Foreign Secretary made an off-the-cuff remark that has annoyed Washington.", l:"Issue a clarification", r:"Say nothing and hope",
+      e:{l:{cabinet:1,backbench:0,media:2,public:-1}, r:{cabinet:-2,backbench:-1,media:-4,public:0}},
+      hl:{l:"NO.10 SMOOTHS THINGS OVER WITH ALLIES", r:"SPECIAL RELATIONSHIP 'STRAINED', SAY SOURCES"}},
+    {t:"A junior doctor's strike enters its fourth week. Waiting lists are climbing.", l:"Bring in agency staff", r:"Meet the pay demand",
+      e:{l:{cabinet:2,backbench:-1,media:-2,public:-4}, r:{cabinet:-5,backbench:1,media:1,public:6}},
+      hl:{l:"AGENCY BILL SPIRALS, CRITICS CRY WASTE", r:"NHS STRIKE ENDS — TREASURY WINCES"}},
+    {t:"Backbenchers circulate a letter demanding tougher immigration numbers before the local elections.", l:"Announce a crackdown", r:"Resist the pressure",
+      e:{l:{cabinet:-1,backbench:6,media:-3,public:2}, r:{cabinet:2,backbench:-7,media:3,public:-2}},
+      hl:{l:"PM UNVEILS TOUGH NEW BORDER PLAN", r:"'SPINELESS' — BACKBENCHERS REVOLT BREWING"}},
+    {t:"A national newspaper offers you a friendly exclusive interview — for a favour later.", l:"Take the deal", r:"Decline on principle",
+      e:{l:{cabinet:0,backbench:0,media:7,public:-2}, r:{cabinet:1,backbench:1,media:-4,public:3}},
+      hl:{l:"GLOWING PROFILE RUNS ON PAGE ONE", r:"PAPER TURNS COOL TOWARDS NO.10"}},
+    {t:"Flooding has devastated three constituencies. Local MPs demand you visit in wellies by morning.", l:"Fly up immediately", r:"Send the Environment Secretary",
+      e:{l:{cabinet:-1,backbench:5,media:2,public:5}, r:{cabinet:2,backbench:-3,media:-2,public:-3}},
+      hl:{l:"PM WADES IN, LITERALLY", r:"'WHERE IS THE PM?' ASK FLOOD VICTIMS"}},
+    {t:"The Chief Whip reports two more MPs are threatening to defect to the opposition.", l:"Offer them ministerial jobs", r:"Let them walk",
+      e:{l:{cabinet:-4,backbench:5,media:-1,public:-1}, r:{cabinet:2,backbench:-5,media:2,public:1}},
+      hl:{l:"REBELS BOUGHT OFF WITH RED BOXES", r:"TWO MPs CROSS THE FLOOR IN BLOW TO PM"}},
+    {t:"A whistleblower alleges the Defence Secretary awarded a contract to a family friend.", l:"Order an independent inquiry", r:"Trust him and move on",
+      e:{l:{cabinet:-3,backbench:1,media:3,public:4}, r:{cabinet:3,backbench:-2,media:-6,public:-4}},
+      hl:{l:"PM ORDERS INQUIRY INTO OWN MINISTER", r:"'CRONYISM', SAYS OPPOSITION AS PM DEFENDS ALLY"}},
+    {t:"Inflation figures beat expectations — briefly. Should you claim credit before revisions land?", l:"Take a victory lap", r:"Stay cautious",
+      e:{l:{cabinet:2,backbench:2,media:1,public:3}, r:{cabinet:0,backbench:0,media:-1,public:0}},
+      hl:{l:"PM HAILS 'TURNING POINT' — CRITICS SMELL A TRAP", r:"NO.10 REFUSES TO CELEBRATE EARLY"}},
+    {t:"University tuition fees haven't risen in a decade. Vice-chancellors warn of collapse.", l:"Raise the cap", r:"Freeze fees again",
+      e:{l:{cabinet:3,backbench:-2,media:-1,public:-6}, r:{cabinet:-3,backbench:3,media:1,public:4}},
+      hl:{l:"STUDENTS FACE BIGGER DEBTS UNDER NEW CAP", r:"UNIVERSITIES WARN OF 'MANAGED DECLINE'"}},
+    {t:"A backbencher live-tweets their disagreement with government policy mid-debate.", l:"Publicly rebuke them", r:"Ignore it entirely",
+      e:{l:{cabinet:2,backbench:-4,media:1,public:-1}, r:{cabinet:-1,backbench:2,media:-2,public:0}},
+      hl:{l:"PM SLAPS DOWN OWN BACKBENCHER", r:"DISCIPLINE 'SLIPPING', SAY WESTMINSTER WATCHERS"}},
+    {t:"Farmers block Whitehall with tractors over new trade deal import rules.", l:"Delay the trade deal", r:"Push it through",
+      e:{l:{cabinet:-2,backbench:3,media:0,public:4}, r:{cabinet:4,backbench:-4,media:-2,public:-5}},
+      hl:{l:"TRACTORS RETREAT AS PM BLINKS", r:"FARMERS FUME AS DEAL RAMMED THROUGH"}},
+    {t:"Your Chancellor privately warns that the sums for your flagship pledge simply don't add up.", l:"Scale back the pledge", r:"Find the money anyway",
+      e:{l:{cabinet:2,backbench:-3,media:0,public:-3}, r:{cabinet:-5,backbench:2,media:-1,public:4}},
+      hl:{l:"U-TURN AS FLAGSHIP POLICY QUIETLY SHRINKS", r:"CHANCELLOR RAIDS RESERVES TO KEEP PROMISE"}},
+    {t:"A viral video shows a minister struggling to name the price of a pint of milk.", l:"Send them for media training", r:"Laugh it off",
+      e:{l:{cabinet:1,backbench:0,media:2,public:-1}, r:{cabinet:0,backbench:-1,media:-3,public:2}},
+      hl:{l:"MINISTER 'BRUSHES UP' AFTER GAFFE", r:"PM SHRUGS OFF 'MILKGATE'"}},
+    {t:"Prison overcrowding has hit crisis point. Early release is politically toxic but the alternative is worse.", l:"Announce early releases", r:"Build emergency capacity",
+      e:{l:{cabinet:-2,backbench:-5,media:-3,public:-4}, r:{cabinet:2,backbench:3,media:1,public:2}},
+      hl:{l:"'SOFT ON CRIME' ROARS OPPOSITION", r:"NEW PRISON CAPACITY WON'T ARRIVE FOR YEARS, WARN CRITICS"}},
+    {t:"A foreign state is accused of interfering in the upcoming local elections.", l:"Go public with the evidence", r:"Handle it quietly through diplomatic channels",
+      e:{l:{cabinet:1,backbench:2,media:3,public:1}, r:{cabinet:2,backbench:-1,media:-3,public:-1}},
+      hl:{l:"PM CONFRONTS FOREIGN MEDDLING HEAD ON", r:"WHITEHALL SILENCE FUELS SPECULATION"}},
+    {t:"Your press secretary suggests leaking a rival's bad headline before it breaks on its own.", l:"Approve the leak", r:"Keep it clean",
+      e:{l:{cabinet:1,backbench:-1,media:-4,public:-2}, r:{cabinet:0,backbench:1,media:2,public:1}},
+      hl:{l:"NO.10 ACCUSED OF DIRTY TRICKS", r:"PM KEEPS HANDS CLEAN, ALLIES SAY"}},
+    {t:"The Bank of England hints it may need to raise interest rates again before Christmas.", l:"Publicly back the Bank's independence", r:"Pressure them to hold off",
+      e:{l:{cabinet:1,backbench:-1,media:2,public:-2}, r:{cabinet:-3,backbench:1,media:-3,public:2}},
+      hl:{l:"PM REAFFIRMS BANK'S INDEPENDENCE", r:"'POLITICAL INTERFERENCE', WARN ECONOMISTS"}},
+    {t:"A well-loved former Cabinet minister is caught in an old scandal resurfacing online.", l:"Distance yourself fast", r:"Stand by an old friend",
+      e:{l:{cabinet:-2,backbench:1,media:2,public:1}, r:{cabinet:3,backbench:-3,media:-5,public:-3}},
+      hl:{l:"PM 'DEEPLY DISAPPOINTED', CUTS TIES", r:"LOYALTY OVER JUDGEMENT, SAY CRITICS"}},
+    {t:"Your Special Adviser suggests a snap reshuffle to shore up wavering Cabinet loyalty.", l:"Reshuffle now", r:"Wait it out",
+      e:{l:{cabinet:6,backbench:-2,media:-1,public:0}, r:{cabinet:-3,backbench:0,media:0,public:0}},
+      hl:{l:"PM RESHUFFLES DECK, WINNERS AND LOSERS NAMED", r:"PM ACCUSED OF DITHERING"}},
+    {t:"Council tax bills are set to rise sharply as local authorities near bankruptcy.", l:"Bail out councils", r:"Let them cut services",
+      e:{l:{cabinet:-4,backbench:0,media:1,public:5}, r:{cabinet:3,backbench:-1,media:-2,public:-6}},
+      hl:{l:"TREASURY OPENS PURSE FOR STRUGGLING COUNCILS", r:"LIBRARIES, BUSES, BINS: THE CUTS BEGIN"}},
+    {t:"A satirical sketch show has taken to impersonating you weekly, and it's landing.", l:"Play along publicly", r:"Complain to the broadcaster",
+      e:{l:{cabinet:0,backbench:1,media:4,public:3}, r:{cabinet:1,backbench:-1,media:-5,public:-3}},
+      hl:{l:"PM 'GOOD SPORT' OVER SPOOF, RATINGS SOAR", r:"PM ACCUSED OF THIN SKIN"}},
+    {t:"A backbench committee report savages your flagship housing target as unachievable.", l:"Quietly drop the target", r:"Double down publicly",
+      e:{l:{cabinet:-1,backbench:2,media:-2,public:-3}, r:{cabinet:2,backbench:-3,media:1,public:1}},
+      hl:{l:"HOUSING TARGET SCRAPPED IN STEALTH U-TURN", r:"PM VOWS TO 'GET BRITAIN BUILDING' ANYWAY"}},
+    {t:"Dockworkers threaten to strike over automation plans at major ports.", l:"Back the automation", r:"Side with the workers",
+      e:{l:{cabinet:3,backbench:-2,media:0,public:-4}, r:{cabinet:-3,backbench:3,media:0,public:4}},
+      hl:{l:"PORTS PRESS AHEAD WITH AUTOMATION", r:"DOCKWORKERS HAIL 'RARE WIN' FOR LABOUR"}},
+    {t:"A tabloid claims to have your private diary entries from before you took office.", l:"Deny everything", r:"Admit it and move on",
+      e:{l:{cabinet:0,backbench:0,media:-3,public:-1}, r:{cabinet:-1,backbench:-1,media:2,public:2}},
+      hl:{l:"NO.10 DISMISSES 'FICTION' AS ROW RUMBLES", r:"PM'S CANDOUR WINS GRUDGING RESPECT"}},
+    {t:"The Cabinet Secretary warns that Civil Service morale has cratered under the pace of reform.", l:"Slow the reform drive", r:"Push harder for change",
+      e:{l:{cabinet:2,backbench:0,media:-1,public:-1}, r:{cabinet:-3,backbench:1,media:1,public:2}},
+      hl:{l:"REFORM PAUSE 'A RELIEF' TO WHITEHALL MANDARINS", r:"WHITEHALL 'AT BREAKING POINT', WARN INSIDERS"}},
+    {t:"An ally offers to fund your leadership campaign fund in exchange for a quiet word with a regulator.", l:"Take the money", r:"Refuse outright",
+      e:{l:{cabinet:2,backbench:1,media:-6,public:-5}, r:{cabinet:-1,backbench:-1,media:3,public:3}},
+      hl:{l:"DONOR ROW ENGULFS NO.10", r:"PM WALKS AWAY FROM 'TOXIC' OFFER"}},
+    {t:"A heatwave is straining the National Grid. Rolling blackouts are being discussed.", l:"Ration industrial power first", r:"Ration household power first",
+      e:{l:{cabinet:1,backbench:-1,media:-1,public:3}, r:{cabinet:-2,backbench:1,media:1,public:-5}},
+      hl:{l:"FACTORIES DARKEN TO KEEP LIGHTS ON AT HOME", r:"HOUSEHOLDS FACE BLACKOUTS AS FACTORIES STAY LIT"}},
+    {t:"Your predecessor gives a scathing newspaper interview criticising your first year.", l:"Hit back hard", r:"Take the high road",
+      e:{l:{cabinet:1,backbench:2,media:-2,public:-1}, r:{cabinet:0,backbench:-1,media:2,public:2}},
+      hl:{l:"PM FIRES BACK AT 'BITTER' PREDECESSOR", r:"PM 'RISES ABOVE IT', SAY ALLIES"}},
+    {t:"A leaked WhatsApp group shows senior aides mocking a grieving constituent's letter.", l:"Fire the aides", r:"Keep them, it was 'banter'",
+      e:{l:{cabinet:-2,backbench:1,media:3,public:4}, r:{cabinet:1,backbench:-1,media:-7,public:-6}},
+      hl:{l:"AIDES OUT AS PM MOVES FAST", r:"'BANTER' DEFENCE ENRAGES PUBLIC"}},
+    {t:"The Post Office scandal resurfaces with new victims coming forward weekly.", l:"Fast-track compensation", r:"Wait for the full inquiry",
+      e:{l:{cabinet:-3,backbench:1,media:4,public:6}, r:{cabinet:2,backbench:0,media:-4,public:-5}},
+      hl:{l:"VICTIMS FINALLY PAID AS PM ACTS", r:"'JUSTICE DELAYED AGAIN', SAY CAMPAIGNERS"}},
+    {t:"A think tank close to your party proposes scrapping the pension triple lock.", l:"Explore it quietly", r:"Rule it out completely",
+      e:{l:{cabinet:2,backbench:-3,media:-2,public:-6}, r:{cabinet:-2,backbench:2,media:1,public:5}},
+      hl:{l:"TRIPLE LOCK 'UNDER REVIEW', SPARKING PANIC", r:"PM: 'PENSIONERS WILL NOT PAY FOR THIS'"}},
+    {t:"Your Deputy PM is caught giving a wildly off-message answer on live radio.", l:"Publicly correct the record", r:"Let it slide",
+      e:{l:{cabinet:-2,backbench:1,media:1,public:0}, r:{cabinet:1,backbench:-1,media:-3,public:-1}},
+      hl:{l:"NO.10 SWIFTLY CLARIFIES DEPUTY'S GAFFE", r:"MIXED MESSAGES ROW DEEPENS"}},
+    {t:"Border Force reports a record number of small boat crossings overnight.", l:"Announce emergency measures", r:"Stick to the existing plan",
+      e:{l:{cabinet:1,backbench:4,media:-2,public:1}, r:{cabinet:0,backbench:-4,media:1,public:-2}},
+      hl:{l:"PM UNVEILS EMERGENCY BORDER MEASURES", r:"PM ACCUSED OF 'NO PLAN B' AS NUMBERS SOAR"}},
+    {t:"A major employer threatens to relocate its headquarters over corporation tax.", l:"Offer a tax break", r:"Hold firm on rates",
+      e:{l:{cabinet:3,backbench:-1,media:-1,public:-4}, r:{cabinet:-2,backbench:2,media:1,public:3}},
+      hl:{l:"FIRM STAYS AFTER QUIET CONCESSION", r:"JOBS FEARS AS FIRM WEIGHS EXIT"}},
+    {t:"Social care providers warn they are days from mass insolvency.", l:"Emergency cash injection", r:"Ask families to cover the gap",
+      e:{l:{cabinet:-3,backbench:1,media:2,public:6}, r:{cabinet:2,backbench:-2,media:-3,public:-7}},
+      hl:{l:"CARE SECTOR BAILED OUT AT ELEVENTH HOUR", r:"FAMILIES FURIOUS OVER CARE COSTS SHIFT"}},
+    {t:"A row breaks out over whether to fund a new royal yacht for trade missions.", l:"Fund it", r:"Scrap the idea",
+      e:{l:{cabinet:1,backbench:-2,media:-3,public:-4}, r:{cabinet:-1,backbench:1,media:2,public:3}},
+      hl:{l:"'VANITY PROJECT' ROW AS YACHT APPROVED", r:"PM SINKS YACHT PLAN AMID BACKLASH"}},
+    {t:"A senior judge rules part of your flagship legislation unlawful.", l:"Appeal the ruling", r:"Rewrite the law",
+      e:{l:{cabinet:1,backbench:2,media:-2,public:-2}, r:{cabinet:-2,backbench:-1,media:1,public:1}},
+      hl:{l:"NO.10 VOWS TO FIGHT RULING IN COURT", r:"PM BACKS DOWN, REDRAFTS LEGISLATION"}},
+    {t:"Teachers' unions threaten a walkout over classroom violence and staffing.", l:"Meet union demands", r:"Send in more inspectors instead",
+      e:{l:{cabinet:-3,backbench:1,media:1,public:4}, r:{cabinet:2,backbench:-1,media:-2,public:-3}},
+      hl:{l:"TEACHERS CALL OFF STRIKE AFTER DEAL", r:"UNIONS SLAM 'INSULTING' INSPECTOR PLAN"}},
+    {t:"A rival party leader challenges you to a live televised debate this week.", l:"Accept immediately", r:"Decline and look weak",
+      e:{l:{cabinet:0,backbench:1,media:3,public:2}, r:{cabinet:-1,backbench:-2,media:-4,public:-3}},
+      hl:{l:"PM ACCEPTS DEBATE CHALLENGE HEAD-ON", r:"'SCARED OF SCRUTINY', SAYS RIVAL"}},
+    {t:"Water companies are caught dumping sewage while paying out huge dividends.", l:"Cap the dividends", r:"Let the regulator handle it",
+      e:{l:{cabinet:-2,backbench:1,media:3,public:6}, r:{cabinet:2,backbench:0,media:-3,public:-5}},
+      hl:{l:"PM MOVES TO CAP WATER FIRM PAYOUTS", r:"REGULATOR 'TOOTHLESS', SAY CAMPAIGNERS"}},
+    {t:"Your government's flagship AI regulation bill is accused of favouring big tech.", l:"Toughen the rules", r:"Keep it business-friendly",
+      e:{l:{cabinet:-2,backbench:1,media:2,public:2}, r:{cabinet:3,backbench:-1,media:-2,public:-3}},
+      hl:{l:"TECH GIANTS WARN OF 'INVESTMENT CHILL'", r:"CRITICS SAY BILL 'WRITTEN BY LOBBYISTS'"}},
+    {t:"A former minister publishes explosive diaries revealing Cabinet infighting.", l:"Dismiss it as fiction", r:"Address it head-on",
+      e:{l:{cabinet:-1,backbench:0,media:-3,public:-1}, r:{cabinet:-2,backbench:-1,media:2,public:2}},
+      hl:{l:"NO.10 REFUSES TO ENGAGE WITH 'TITTLE-TATTLE'", r:"PM'S CANDID PRESSER WINS CAUTIOUS PRAISE"}},
+    {t:"Fishing communities protest new EU trade arrangement quotas outside Parliament.", l:"Renegotiate the quotas", r:"Defend the deal as the best available",
+      e:{l:{cabinet:-2,backbench:2,media:0,public:4}, r:{cabinet:2,backbench:-2,media:0,public:-3}},
+      hl:{l:"PM REOPENS TALKS AFTER FISHERMEN'S PROTEST", r:"COASTAL TOWNS FEEL ABANDONED, SAY MPs"}},
+    {t:"A national broadcaster's license fee review lands on your desk amid budget cuts.", l:"Cut the fee", r:"Protect its funding",
+      e:{l:{cabinet:1,backbench:-1,media:-5,public:3}, r:{cabinet:-1,backbench:1,media:4,public:-2}},
+      hl:{l:"LICENCE FEE SLASHED, BROADCASTER FURIOUS", r:"PM DEFENDS 'NATIONAL INSTITUTION' FROM CUTS"}},
+    {t:"Retailers report a wave of shop thefts and demand tougher sentencing.", l:"Toughen sentencing", r:"Fund more community policing",
+      e:{l:{cabinet:1,backbench:2,media:0,public:1}, r:{cabinet:-1,backbench:-1,media:1,public:3}},
+      hl:{l:"PM PROMISES CRACKDOWN ON SHOP THEFT", r:"MORE BOBBIES ON THE BEAT, PM PLEDGES"}},
+    {t:"A Cabinet minister is caught using a private email account for government business.", l:"Refer them to standards watchdog", r:"Have a quiet word instead",
+      e:{l:{cabinet:-4,backbench:1,media:2,public:2}, r:{cabinet:2,backbench:-2,media:-4,public:-3}},
+      hl:{l:"MINISTER REFERRED OVER EMAIL ROW", r:"'COVER-UP' CLAIMS AS PM STAYS QUIET"}},
+    {t:"Motorway tolls are proposed to fund crumbling road infrastructure.", l:"Introduce the tolls", r:"Find funding elsewhere",
+      e:{l:{cabinet:2,backbench:-2,media:-1,public:-6}, r:{cabinet:-3,backbench:2,media:1,public:4}},
+      hl:{l:"DRIVERS FACE NEW TOLLS FROM SPRING", r:"PM FINDS ALTERNATIVE FUNDING, DRIVERS RELIEVED"}},
+    {t:"A viral campaign demands a four-day working week trial for the Civil Service.", l:"Trial it", r:"Reject it as unaffordable",
+      e:{l:{cabinet:-2,backbench:0,media:2,public:5}, r:{cabinet:2,backbench:0,media:-1,public:-4}},
+      hl:{l:"CIVIL SERVICE TO TRIAL FOUR-DAY WEEK", r:"PM RULES OUT 'UNAFFORDABLE' SHORTER WEEK"}},
+    {t:"An ally nation asks for military support in a growing regional conflict.", l:"Commit limited support", r:"Stay out of it",
+      e:{l:{cabinet:1,backbench:-2,media:1,public:-3}, r:{cabinet:-1,backbench:1,media:-2,public:2}},
+      hl:{l:"UK COMMITS SUPPORT AMID WAR FEARS", r:"PM RESISTS PRESSURE TO GET INVOLVED"}},
+    {t:"A children's hospital charity reveals waiting times have tripled under your watch.", l:"Announce emergency NHS funding", r:"Blame the previous government",
+      e:{l:{cabinet:-3,backbench:0,media:3,public:5}, r:{cabinet:1,backbench:0,media:-3,public:-4}},
+      hl:{l:"EMERGENCY FUNDING FOR CHILDREN'S NHS CARE", r:"'STILL BLAMING OTHERS', SAY CRITICS"}},
+    {t:"A leading pollster shows your approval rating has fallen to a record low.", l:"Reshuffle to change the story", r:"Ignore the polls and carry on",
+      e:{l:{cabinet:4,backbench:-2,media:1,public:0}, r:{cabinet:-1,backbench:0,media:-1,public:-1}},
+      hl:{l:"PM RESHUFFLES TO 'RESET' NARRATIVE", r:"PM 'IN DENIAL' AS RATINGS SINK, SAY RIVALS"}},
+    {t:"Small business owners protest a planned rise in the minimum wage.", l:"Push it through anyway", r:"Delay the increase",
+      e:{l:{cabinet:-1,backbench:1,media:0,public:5}, r:{cabinet:2,backbench:-1,media:0,public:-5}},
+      hl:{l:"WAGE RISE GOES AHEAD DESPITE PROTESTS", r:"LOW-PAID WORKERS LEFT WAITING, SAY UNIONS"}},
+    {t:"A leaked recording appears to show you privately mocking a backbench MP.", l:"Apologise publicly", r:"Deny it happened",
+      e:{l:{cabinet:0,backbench:2,media:1,public:1}, r:{cabinet:1,backbench:-5,media:-3,public:-2}},
+      hl:{l:"PM'S APOLOGY 'GRACIOUSLY ACCEPTED', SAYS MP", r:"DENIAL UNRAVELS AS MORE TAPES EMERGE"}},
+  ];
+
+  // Late-game escalation crises (harsher swings) mixed in once term length grows.
+  const HARD_DECK = [
+    {t:"The Cabinet is deadlocked 50/50 on declaring a national economic emergency.", l:"Declare it", r:"Downplay it",
+      e:{l:{cabinet:-6,backbench:-3,media:5,public:-3}, r:{cabinet:4,backbench:2,media:-6,public:-2}},
+      hl:{l:"PM DECLARES ECONOMIC EMERGENCY, MARKETS JOLT", r:"CRITICS: 'HEAD IN THE SAND'"}},
+    {t:"Three Cabinet ministers resign together over your handling of the crisis.", l:"Accept and reshuffle fast", r:"Beg them to stay",
+      e:{l:{cabinet:-8,backbench:2,media:1,public:1}, r:{cabinet:-3,backbench:-2,media:-3,public:-2}},
+      hl:{l:"BLOODY RESHUFFLE AS TRIO WALK OUT", r:"PM'S PLEA REJECTED — 'TOO LITTLE, TOO LATE'"}},
+    {t:"A confidence vote is being whispered about in the tearooms. Someone must go first.", l:"Sack your rival pre-emptively", r:"Call their bluff",
+      e:{l:{cabinet:-4,backbench:-6,media:2,public:-1}, r:{cabinet:2,backbench:-5,media:-1,public:1}},
+      hl:{l:"PRE-EMPTIVE STRIKE BACKFIRES SPECTACULARLY", r:"PM DARES REBELS TO MAKE THEIR MOVE"}},
+    {t:"The markets are spooked by rumours of your government's imminent collapse.", l:"Address the nation tonight", r:"Say nothing and let it pass",
+      e:{l:{cabinet:1,backbench:1,media:-2,public:2}, r:{cabinet:-2,backbench:-3,media:-4,public:-3}},
+      hl:{l:"PM'S ADDRESS STEADIES NERVES, JUST ABOUT", r:"SILENCE FROM NO.10 SPOOKS MARKETS FURTHER"}},
+    {t:"Your entire press team resigns en masse, citing 'irreconcilable differences'.", l:"Bring in outside crisis managers", r:"Promote from within, fast",
+      e:{l:{cabinet:-2,backbench:0,media:-5,public:-1}, r:{cabinet:1,backbench:1,media:-3,public:0}},
+      hl:{l:"EXTERNAL FIXERS PARACHUTED IN AS PANIC SETS IN", r:"ROOKIE TEAM THROWN IN AT THE DEEP END"}},
+    {t:"Two Cabinet grandees are openly briefing journalists against each other — and you.", l:"Force them to make peace publicly", r:"Let them destroy each other",
+      e:{l:{cabinet:2,backbench:-2,media:1,public:0}, r:{cabinet:-6,backbench:-3,media:3,public:-2}},
+      hl:{l:"AWKWARD HANDSHAKE PHOTO PAPERS OVER CRACKS", r:"CABINET WAR SPILLS INTO THE OPEN"}},
+    {t:"A snap poll shows your own party members would rather have almost anyone else lead them.", l:"Face them down at conference", r:"Announce you won't fight the next election",
+      e:{l:{cabinet:-3,backbench:-4,media:2,public:1}, r:{cabinet:3,backbench:5,media:-2,public:-1}},
+      hl:{l:"DEFIANT PM VOWS TO FIGHT ON AT CONFERENCE", r:"LAME DUCK PM SIGNALS THE END IS NEAR"}},
+  ];
+
+  // A UK Parliament runs a maximum of five years between elections.
+  const TERM_LENGTH = 60; // months
+
+  // ---------- STATE ----------
+  const state = {
+    faction: {cabinet:62, backbench:62, media:62, public:62},
+    day: 0,
+    termDays: 0,
+    terms: 1,
+    edition: 1,
+    pmName: "",
+    current: null,
+    hardMode: false,
+    deckPool: []
+  };
+
+  const els = {
+    card: document.getElementById('card'),
+    cardText: document.getElementById('cardText'),
+    cardEyebrow: document.getElementById('cardEyebrow'),
+    choiceLeft: document.getElementById('choiceLeft'),
+    choiceRight: document.getElementById('choiceRight'),
+    hintLeft: document.getElementById('hintLeft'),
+    hintRight: document.getElementById('hintRight'),
+    ticker: document.getElementById('ticker'),
+    editionNum: document.getElementById('editionNum'),
+    termLine: document.getElementById('termLine'),
+    introOverlay: document.getElementById('introOverlay'),
+    endOverlay: document.getElementById('endOverlay'),
+    endTitle: document.getElementById('endTitle'),
+    endText: document.getElementById('endText'),
+    endDays: document.getElementById('endDays'),
+    endTerms: document.getElementById('endTerms'),
+    startBtn: document.getElementById('startBtn'),
+    restartBtn: document.getElementById('restartBtn'),
+    pmNameInput: document.getElementById('pmNameInput'),
+  };
+
+  function shuffled(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  }
+
+  function refillPool(){
+    const base = shuffled(DECK);
+    state.deckPool = state.hardMode ? shuffled(base.concat(shuffled(HARD_DECK))) : base;
+  }
+
+  function updateDials(){
+    FACTIONS.forEach(f=>{
+      const v = Math.max(0, Math.min(100, state.faction[f]));
+      const bar = document.getElementById('g-'+f);
+      bar.style.width = v+'%';
+      let color = FACTION_COLOR[f];
+      if(v < 25) color = '#e15b5b';
+      bar.style.background = color;
+    });
+    els.termLine.textContent = `TERM ${toRoman(state.terms)} · MONTH ${state.termDays} OF ${TERM_LENGTH}`;
+  }
+
+  function toRoman(n){
+    const map=[[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];
+    let r='';
+    for(const [v,s] of map){ while(n>=v){ r+=s; n-=v; } }
+    return r||'I';
+  }
+
+  function nextCard(){
+    if(state.deckPool.length === 0) refillPool();
+    state.current = state.deckPool.pop();
+    els.cardText.textContent = state.current.t;
+    els.choiceLeft.textContent = state.current.l;
+    els.choiceRight.textContent = state.current.r;
+    els.cardEyebrow.textContent = pickEyebrow();
+    els.hintLeft.textContent = state.current.l;
+    els.hintRight.textContent = state.current.r;
+    els.card.style.transform = '';
+    els.card.style.opacity = 1;
+    els.card.style.transition = '';
+  }
+
+  function pickEyebrow(){
+    const opts = ["CRISIS BRIEFING","URGENT — RED BOX","FOR YOUR EYES ONLY","OVERNIGHT DEVELOPMENT","MORNING DIGEST"];
+    return opts[Math.floor(Math.random()*opts.length)];
+  }
+
+  function applyChoice(dir){
+    const c = state.current;
+    const eff = dir === 'l' ? c.e.l : c.e.r;
+
+    // Crises bite harder the longer a term runs, and harder again in later terms —
+    // a government's honeymoon doesn't last, and neither does the electorate's patience.
+    const scale = 1 + 0.20 * (state.termDays / TERM_LENGTH) + 0.10 * (state.terms - 1);
+    FACTIONS.forEach(f=>{
+      const raw = eff[f] || 0;
+      state.faction[f] += Math.round(raw * scale);
+    });
+
+    els.ticker.textContent = dir === 'l' ? c.hl.l : c.hl.r;
+    state.edition++;
+    els.editionNum.textContent = '· Edition ' + state.edition;
+
+    state.day++;
+    state.termDays++;
+
+    // The daily grind of governing: goodwill erodes on its own most months,
+    // and roughly one month in five brings a rough patch that stings extra.
+    FACTIONS.forEach(f=>{ state.faction[f] -= 1; });
+    if(Math.random() < 0.18){
+      const hit = FACTIONS[Math.floor(Math.random()*FACTIONS.length)];
+      state.faction[hit] -= 2;
+    }
+
+    updateDials();
+
+    const dead = FACTIONS.find(f => state.faction[f] <= 0);
+    if(dead){
+      return endGame(dead);
+    }
+    if(state.termDays >= TERM_LENGTH){
+      return electionScreen();
+    }
+    nextCard();
+  }
+
+  function electionScreen(){
+    state.terms++;
+    state.termDays = 0;
+    state.hardMode = true;
+    // A fresh mandate buys some goodwill back, but nowhere near a full reset —
+    // the erosion and escalation continue from here.
+    FACTIONS.forEach(f=>{ state.faction[f] = Math.min(85, state.faction[f] + 10); });
+    updateDials();
+    els.endTitle.textContent = "General Election: You Survived";
+    els.endText.textContent = `After a full five-year term, ${state.pmName || 'the Prime Minister'} wins a fresh mandate. There's a small bump in goodwill to show for it — but the job only gets harder from here.`;
+    els.endDays.textContent = state.day;
+    els.endTerms.textContent = state.terms - 1;
+    els.restartBtn.textContent = "Begin Term " + toRoman(state.terms);
+    els.endOverlay.classList.remove('hidden');
+    els.endOverlay.dataset.mode = 'election';
+  }
+
+  function endGame(cause){
+    const causeText = {
+      cabinet: `Your own Cabinet turned on you. A delegation visited you this morning; there was tea, and then there wasn't a Prime Minister.`,
+      backbench: `The backbenches revolted. Letters reached the required threshold before breakfast. It was, by all accounts, brief.`,
+      media: `The press moved as one. By the time the first editorial ran, your Cabinet had already stopped returning your calls.`,
+      public: `The public simply stopped listening. No riot, no rebellion — just silence, which is somehow worse.`
+    };
+    els.endTitle.textContent = "Vote of No Confidence";
+    els.endText.textContent = causeText[cause];
+    els.endDays.textContent = state.day;
+    els.endTerms.textContent = state.terms;
+    els.restartBtn.textContent = "A New Leader Emerges";
+    els.endOverlay.classList.remove('hidden');
+    els.endOverlay.dataset.mode = 'end';
+  }
+
+  function resetGame(freshName){
+    state.faction = {cabinet:62, backbench:62, media:62, public:62};
+    state.day = 0; state.termDays = 0; state.terms = 1; state.edition = 1;
+    state.hardMode = false;
+    if(freshName) state.pmName = els.pmNameInput.value.trim();
+    refillPool();
+    updateDials();
+    els.editionNum.textContent = '· Edition 1';
+    els.ticker.textContent = state.pmName
+      ? `${state.pmName} arrives at Downing Street to a nation in a mood.`
+      : `A new Prime Minister arrives at Downing Street to a nation in a mood.`;
+    nextCard();
+  }
+
+  // ---------- DRAG / SWIPE ----------
+  let dragging = false, startX = 0, startY = 0, dx = 0, dy = 0;
+  const THRESHOLD = 100;
+
+  function pointerDown(e){
+    dragging = true;
+    const p = e.touches ? e.touches[0] : e;
+    startX = p.clientX; startY = p.clientY;
+    els.card.style.transition = 'none';
+    els.card.style.cursor = 'grabbing';
+  }
+  function pointerMove(e){
+    if(!dragging) return;
+    const p = e.touches ? e.touches[0] : e;
+    dx = p.clientX - startX;
+    dy = p.clientY - startY;
+    const rot = dx / 18;
+    els.card.style.transform = `translate(${dx}px, ${dy*0.4}px) rotate(${rot}deg)`;
+    const prog = Math.max(0, Math.min(1, Math.abs(dx)/THRESHOLD));
+    if(dx < 0){
+      els.hintLeft.style.opacity = prog;
+      els.hintRight.style.opacity = 0;
+      els.card.classList.toggle('tilt-l', prog > 0.3);
+      els.card.classList.remove('tilt-r');
+    } else if(dx > 0){
+      els.hintRight.style.opacity = prog;
+      els.hintLeft.style.opacity = 0;
+      els.card.classList.toggle('tilt-r', prog > 0.3);
+      els.card.classList.remove('tilt-l');
+    }
+  }
+  function pointerUp(){
+    if(!dragging) return;
+    dragging = false;
+    els.card.style.cursor = 'grab';
+    els.hintLeft.style.opacity = 0;
+    els.hintRight.style.opacity = 0;
+    els.card.classList.remove('tilt-l','tilt-r');
+    if(Math.abs(dx) > THRESHOLD){
+      const dir = dx < 0 ? 'l' : 'r';
+      flyOut(dir);
+    } else {
+      els.card.style.transition = 'transform .25s cubic-bezier(.4,0,.2,1)';
+      els.card.style.transform = '';
+    }
+    dx = 0; dy = 0;
+  }
+
+  function flyOut(dir){
+    els.card.style.transition = 'transform .35s ease-in, opacity .35s ease-in';
+    const flyX = dir === 'l' ? -600 : 600;
+    els.card.style.transform = `translate(${flyX}px, ${dy}px) rotate(${dir==='l'?-30:30}deg)`;
+    els.card.style.opacity = 0;
+    setTimeout(()=>{ applyChoice(dir); }, 260);
+  }
+
+  // Keyboard support
+  window.addEventListener('keydown', (e)=>{
+    if(els.endOverlay.classList.contains('hidden') === false || els.introOverlay.classList.contains('hidden') === false) return;
+    if(e.key === 'ArrowLeft') flyOut('l');
+    if(e.key === 'ArrowRight') flyOut('r');
+  });
+
+  els.card.addEventListener('mousedown', pointerDown);
+  window.addEventListener('mousemove', pointerMove);
+  window.addEventListener('mouseup', pointerUp);
+  els.card.addEventListener('touchstart', pointerDown, {passive:true});
+  window.addEventListener('touchmove', pointerMove, {passive:true});
+  window.addEventListener('touchend', pointerUp);
+
+  // ---------- BUTTONS ----------
+  els.startBtn.addEventListener('click', ()=>{
+    state.pmName = els.pmNameInput.value.trim();
+    els.introOverlay.classList.add('hidden');
+    resetGame(false);
+  });
+  els.pmNameInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') els.startBtn.click(); });
+
+  els.restartBtn.addEventListener('click', ()=>{
+    const mode = els.endOverlay.dataset.mode;
+    els.endOverlay.classList.add('hidden');
+    if(mode === 'election'){
+      refillPool();
+      nextCard();
+    } else {
+      resetGame(false);
+    }
+  });
+
+  updateDials();
+})();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  });
+}
+
+</script>
+</body>
+</html>
