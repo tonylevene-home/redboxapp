@@ -221,8 +221,10 @@
     padding:10px 8px;
     border-radius:20px;
     line-height:1.25;
-    transition:transform .15s, box-shadow .15s;
+    transition:transform .15s, box-shadow .15s, background .15s;
+    cursor:pointer;
   }
+  .choice-pill:active{transform:scale(.95);}
   .choice-pill.l{
     background:rgba(139,38,53,.09);
     border:1.5px solid rgba(139,38,53,.55);
@@ -327,6 +329,29 @@
   }
   .pm-name-input::placeholder{color:#7f8ea6;}
 
+  .howto-row{
+    display:flex;
+    gap:14px;
+    margin:18px 0;
+  }
+  .howto-item{
+    flex:1;
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(201,162,75,.3);
+    border-radius:10px;
+    padding:16px 10px;
+  }
+  .howto-icon{
+    font-size:26px;
+    margin-bottom:8px;
+  }
+  .howto-label{
+    font-size:11.5px;
+    color:#cdd8e8;
+    line-height:1.35;
+    font-family:'IBM Plex Mono', monospace;
+  }
+
   @media (max-height: 700px){
     .card-text{font-size:18px;}
     h1{font-size:22px;}
@@ -355,8 +380,8 @@
       <div class="card-eyebrow" id="cardEyebrow">CRISIS BRIEFING</div>
       <div class="card-text" id="cardText">Loading…</div>
       <div class="card-choices">
-        <div class="choice-pill l"><span class="arrow">◀</span><span id="choiceLeft"></span></div>
-        <div class="choice-pill r"><span id="choiceRight"></span><span class="arrow">▶</span></div>
+        <div class="choice-pill l" id="pillLeft"><span class="arrow">◀</span><span id="choiceLeft"></span></div>
+        <div class="choice-pill r" id="pillRight"><span id="choiceRight"></span><span class="arrow">▶</span></div>
       </div>
     </div>
   </div>
@@ -375,6 +400,26 @@
       <input class="pm-name-input" id="pmNameInput" placeholder="Your name, Prime Minister" maxlength="24">
       <br>
       <button class="primary" id="startBtn">Enter No. 10</button>
+    </div>
+  </div>
+
+  <!-- How-to-play overlay -->
+  <div class="overlay hidden" id="howToOverlay">
+    <div class="panel">
+      <span class="crest">✦ BEFORE YOU BEGIN ✦</span>
+      <h2>Make Your Move</h2>
+      <div class="howto-row">
+        <div class="howto-item">
+          <div class="howto-icon">👈 👉</div>
+          <div class="howto-label">Swipe the card left or right</div>
+        </div>
+        <div class="howto-item">
+          <div class="howto-icon">☝️</div>
+          <div class="howto-label">Or simply tap an answer</div>
+        </div>
+      </div>
+      <p>Every choice moves the needle on all four dials. Watch them closely.</p>
+      <button class="primary" id="howToBtn">Begin</button>
     </div>
   </div>
 
@@ -614,7 +659,7 @@
 
   // ---------- STATE ----------
   const state = {
-    faction: {cabinet:62, backbench:62, media:62, public:62},
+    faction: {cabinet:68, backbench:68, media:68, public:68},
     day: 0,
     termDays: 0,
     terms: 1,
@@ -631,12 +676,16 @@
     cardEyebrow: document.getElementById('cardEyebrow'),
     choiceLeft: document.getElementById('choiceLeft'),
     choiceRight: document.getElementById('choiceRight'),
+    pillLeft: document.getElementById('pillLeft'),
+    pillRight: document.getElementById('pillRight'),
     hintLeft: document.getElementById('hintLeft'),
     hintRight: document.getElementById('hintRight'),
     ticker: document.getElementById('ticker'),
     editionNum: document.getElementById('editionNum'),
     termLine: document.getElementById('termLine'),
     introOverlay: document.getElementById('introOverlay'),
+    howToOverlay: document.getElementById('howToOverlay'),
+    howToBtn: document.getElementById('howToBtn'),
     endOverlay: document.getElementById('endOverlay'),
     endTitle: document.getElementById('endTitle'),
     endText: document.getElementById('endText'),
@@ -705,7 +754,7 @@
 
     // Crises bite harder the longer a term runs, and harder again in later terms —
     // a government's honeymoon doesn't last, and neither does the electorate's patience.
-    const scale = 1 + 0.20 * (state.termDays / TERM_LENGTH) + 0.10 * (state.terms - 1);
+    const scale = 1 + 0.18 * (state.termDays / TERM_LENGTH) + 0.10 * (state.terms - 1);
     FACTIONS.forEach(f=>{
       const raw = eff[f] || 0;
       state.faction[f] += Math.round(raw * scale);
@@ -718,12 +767,17 @@
     state.day++;
     state.termDays++;
 
-    // The daily grind of governing: goodwill erodes on its own most months,
-    // and roughly one month in five brings a rough patch that stings extra.
-    FACTIONS.forEach(f=>{ state.faction[f] -= 1; });
-    if(Math.random() < 0.18){
-      const hit = FACTIONS[Math.floor(Math.random()*FACTIONS.length)];
-      state.faction[hit] -= 2;
+    // A new PM gets a brief honeymoon before the grind sets in. After that,
+    // goodwill erodes on its own most months, and a rough patch stings extra
+    // more often once you're past your first term.
+    const inHoneymoon = state.terms === 1 && state.termDays <= 6;
+    if(!inHoneymoon){
+      FACTIONS.forEach(f=>{ state.faction[f] -= 1; });
+      const roughChance = state.terms === 1 ? 0.10 : 0.20;
+      if(Math.random() < roughChance){
+        const hit = FACTIONS[Math.floor(Math.random()*FACTIONS.length)];
+        state.faction[hit] -= 2;
+      }
     }
 
     updateDials();
@@ -771,8 +825,8 @@
     els.endOverlay.dataset.mode = 'end';
   }
 
-  function resetGame(freshName){
-    state.faction = {cabinet:62, backbench:62, media:62, public:62};
+  function resetGame(freshName, skipFirstCard){
+    state.faction = {cabinet:68, backbench:68, media:68, public:68};
     state.day = 0; state.termDays = 0; state.terms = 1; state.edition = 1;
     state.hardMode = false;
     if(freshName) state.pmName = els.pmNameInput.value.trim();
@@ -782,7 +836,7 @@
     els.ticker.textContent = state.pmName
       ? `${state.pmName} arrives at Downing Street to a nation in a mood.`
       : `A new Prime Minister arrives at Downing Street to a nation in a mood.`;
-    nextCard();
+    if(!skipFirstCard) nextCard();
   }
 
   // ---------- DRAG / SWIPE ----------
@@ -855,13 +909,35 @@
   window.addEventListener('touchmove', pointerMove, {passive:true});
   window.addEventListener('touchend', pointerUp);
 
+  // Tap-to-choose support alongside swipe
+  els.pillLeft.addEventListener('mousedown', (e)=> e.stopPropagation());
+  els.pillLeft.addEventListener('touchstart', (e)=> e.stopPropagation(), {passive:true});
+  els.pillLeft.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    dragging = false; dy = 0;
+    flyOut('l');
+  });
+  els.pillRight.addEventListener('mousedown', (e)=> e.stopPropagation());
+  els.pillRight.addEventListener('touchstart', (e)=> e.stopPropagation(), {passive:true});
+  els.pillRight.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    dragging = false; dy = 0;
+    flyOut('r');
+  });
+
   // ---------- BUTTONS ----------
   els.startBtn.addEventListener('click', ()=>{
     state.pmName = els.pmNameInput.value.trim();
     els.introOverlay.classList.add('hidden');
-    resetGame(false);
+    resetGame(false, true);
+    els.howToOverlay.classList.remove('hidden');
   });
   els.pmNameInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') els.startBtn.click(); });
+
+  els.howToBtn.addEventListener('click', ()=>{
+    els.howToOverlay.classList.add('hidden');
+    nextCard();
+  });
 
   els.restartBtn.addEventListener('click', ()=>{
     const mode = els.endOverlay.dataset.mode;
@@ -884,6 +960,5 @@ if ('serviceWorker' in navigator) {
 }
 
 </script>
-  
 </body>
 </html>
